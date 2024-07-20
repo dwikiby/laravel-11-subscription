@@ -5,10 +5,18 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\MidtransService;
 use Illuminate\Support\Facades\Auth;
 
 class PlanController extends Controller
 {
+    protected $midtransService;
+
+    public function __construct(MidtransService $midtransService)
+    {
+        $this->midtransService = $midtransService;
+    }
+
     public function index()
     {
         $plans = Plan::all();
@@ -42,61 +50,16 @@ class PlanController extends Controller
 
     public function checkout(Request $request)
     {
-        $plan = Plan::find($request->plan);
+        try {
+            $subscription = $this->midtransService->createSubscription($request->plan_id);
 
-        if (!$plan) {
-            return redirect()->back()->with('error', 'Plan not found');
+            return redirect()->route('plans.show', [
+                'plan' => $subscription->plan_id,
+                'snap_token' => $subscription->snap_token,
+                'subscription_id' => $subscription->id
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
-
-        // check if user already subscribed
-        $existingSubscription = Subscription::where('user_id', Auth::id())
-                ->where('plan_id', $plan->id)
-                ->where('status', 'success')
-                ->first();
-        
-        if ($existingSubscription) {
-            return redirect()->route('plans.show', ['plan' => $plan->id])->with('info', 'You already purchased this plan.');
-        }
-
-
-        // Create new subscription
-        $subscription = Subscription::create([
-            'user_id' => Auth::id(),
-            'plan_id' => $plan->id,
-            'starts_at' => now(),
-            'ends_at' => now()->addMonths($plan->duration),
-            'status' => 'pending',
-        ]);
-        // Midtrans Checkout
-        // Set your Merchant Server Key
-        \Midtrans\Config::$serverKey = config('midtrans.serverKey');
-        // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-        \Midtrans\Config::$isProduction = false;
-        // Set sanitization on (default)
-        \Midtrans\Config::$isSanitized = true;
-        // Set 3DS transaction for credit card to true
-        \Midtrans\Config::$is3ds = true;
-
-        // snap 
-        $params = array(
-            'transaction_details' => array(
-                'order_id' => rand(),
-                'gross_amount' => $plan->price,
-            ),
-            'customer_details' => array(
-                'first_name' => Auth::user()->name,
-                'email' => Auth::user()->email,
-            )
-        );
-
-        $snapToken = \Midtrans\Snap::getSnapToken($params);
-        $subscription->snap_token = $snapToken;
-        $subscription->save();
-
-        return redirect()->route('plans.show', [
-            'plan' => $plan->id,
-            'snap_token' => $snapToken,
-            'subscription_id' => $subscription->id
-        ]);    
     }
 }
