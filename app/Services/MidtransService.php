@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use Illuminate\Support\Facades\Auth;
 use Midtrans\Config;
 use Midtrans\Snap;
+use App\Notifications\PaymentReminder;
 
 class MidtransService
 {
@@ -65,6 +66,7 @@ class MidtransService
         $subscription->snap_token = $snapToken;
         $subscription->save();
 
+        Auth::user()->notify(new PaymentReminder($subscription));
         return $subscription;
     }
 }
