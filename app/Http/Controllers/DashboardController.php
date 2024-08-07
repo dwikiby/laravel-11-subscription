@@ -12,9 +12,10 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $subscription = Subscription::where('user_id', $user->id)
-                                    ->where('status', 'success')
-                                    ->first();
+        // $subscription = Subscription::where('user_id', $user->id)
+        //                             ->where('status', 'success')
+        //                             ->first();
+        $subscription = Subscription::ofUserWithStatus($user->id, 'success')->first();
         $status = $subscription ? 'Paid User' : 'Free User';
         $planName = $subscription ? Plan::find($subscription->plan_id)->name : 'None';
 

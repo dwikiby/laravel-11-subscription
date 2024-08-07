@@ -23,8 +23,11 @@ class PlanController extends Controller
         $userId = Auth::id();
 
         // Get a list of plan IDs that the user has successfully subscribed to
-        $purchasedPlans = Subscription::where('user_id', $userId)
-            ->where('status', 'success')
+        // $purchasedPlans = Subscription::where('user_id', $userId)
+        //     ->where('status', 'success')
+        //     ->pluck('plan_id');
+
+        $purchasedPlans = Subscription::ofUserWithStatus($userId, 'success')
             ->pluck('plan_id');
 
         return view('pricing', [
@@ -35,9 +38,13 @@ class PlanController extends Controller
 
     public function show(Plan $plan, Request $request)
     {
-        $existingSubscription = Subscription::where('user_id', Auth::id())
+        // $existingSubscription = Subscription::where('user_id', Auth::id())
+        //     ->where('plan_id', $plan->id)
+        //     ->where('status', 'success')
+        //     ->first();
+
+        $existingSubscription = Subscription::ofUserWithStatus(Auth::id(), 'success')
             ->where('plan_id', $plan->id)
-            ->where('status', 'success')
             ->first();
 
         return view('checkout.index', [

@@ -27,4 +27,9 @@ class Subscription extends Model
     {
         return $this->belongsTo(Plan::class);
     }
+
+    public function scopeOfUserWithStatus($query, $userId, $status)
+    {
+        return $query->where('user_id', $userId)->where('status', $status);
+    }
 }
